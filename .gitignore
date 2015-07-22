@@ -57,3 +57,13 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+#ignore gradle
+.gradle
+.nb-gradle
+
+#ignore data
+Data
+*.train
+*.test
+*.bin
