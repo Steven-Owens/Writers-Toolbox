@@ -5,6 +5,7 @@
  */
 package com.civprod.writerstoolbox.OpenNLP;
 
+import com.civprod.writerstoolbox.NaturalLanguage.util.CommonRegexPatterns;
 import com.civprod.writerstoolbox.data.Document;
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,6 +17,7 @@ import opennlp.tools.chunker.Chunker;
 import opennlp.tools.chunker.ChunkerModel;
 import opennlp.tools.namefind.TokenNameFinder;
 import opennlp.tools.namefind.TokenNameFinderModel;
+import opennlp.tools.parser.Parse;
 import opennlp.tools.parser.Parser;
 import opennlp.tools.parser.ParserFactory;
 import opennlp.tools.parser.ParserModel;
@@ -133,6 +135,32 @@ public class OpenNLPUtils {
     
     public static Parser createParser(ParserModel inParserModel){
         return ParserFactory.create(inParserModel);
+    }
+    
+    public static String walkDownParse(Parse curRootParse) {
+        if (curRootParse == null){
+            return "";
+        }
+        int childCount = curRootParse.getChildCount();
+        Parse[] children = curRootParse.getChildren();
+        String coveredText = curRootParse.getCoveredText();
+        String label = curRootParse.getLabel();
+        String type = curRootParse.getType();
+        if (!"TK".equalsIgnoreCase(type)) {
+            StringBuilder rValueBuilder = new StringBuilder(childCount * 3);
+            rValueBuilder.append("(").append(type);
+            if ((label != null) && (!CommonRegexPatterns.allWhiteSpacePattern.matcher(label).matches())){
+                rValueBuilder.append("-").append(label);
+            }
+            rValueBuilder.append(" ");
+            for (Parse curChildParse : children) {
+                rValueBuilder.append(walkDownParse(curChildParse));
+            }
+            rValueBuilder.append(")");
+            return rValueBuilder.toString();
+        } else {
+            return coveredText;
+        }
     }
     
 }

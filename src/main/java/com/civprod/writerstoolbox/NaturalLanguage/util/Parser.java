@@ -14,10 +14,21 @@ import opennlp.tools.parser.Parse;
  */
 public interface Parser {
 
-    Parse parse(List<String> tokens);
+    Parse parse(List<String> tokens) throws ParsingError;
 
-    Parse parse(String whiteSpacedTokenizedSentence);
+    Parse parse(String whiteSpacedTokenizedSentence) throws ParsingError;
 
-    Parse parse(String sentence, StringTokenizer tokenizerToUse);
-    
+    Parse parse(String sentence, StringTokenizer tokenizerToUse) throws ParsingError;
+
+    public static class ParsingError extends CustomException {
+
+        public ParsingError() {
+            super();
+        }
+
+        public ParsingError(String message) {
+            super(message);
+        }
+
+    }
 }

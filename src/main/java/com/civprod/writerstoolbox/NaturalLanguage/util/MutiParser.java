@@ -14,7 +14,7 @@ import opennlp.tools.parser.Parse;
  */
 public interface MutiParser extends Parser {
     
-    public Parse[] parse(List<String> tokens, int numberOfParses);
-    public Parse[] parse(String whiteSpacedTokenizedSentence, int numberOfParses);
-    public Parse[] parse(String sentence,StringTokenizer tokenizerToUse, int numberOfParses);
+    public Parse[] parse(List<String> tokens, int numberOfParses) throws ParsingError;
+    public Parse[] parse(String whiteSpacedTokenizedSentence, int numberOfParses) throws ParsingError;
+    public Parse[] parse(String sentence,StringTokenizer tokenizerToUse, int numberOfParses) throws ParsingError;
 }
