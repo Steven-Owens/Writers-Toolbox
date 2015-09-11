@@ -24,7 +24,7 @@ import opennlp.tools.util.StringList;
  *
  * @author Steven Owens
  */
-public class DictionaryEditor extends EditorWindow<Dictionary> {
+public class DictionaryEditor extends EditorWindow<Dictionary> { 
 
     /**
      * Creates new form DictionaryEditor
@@ -110,10 +110,18 @@ public class DictionaryEditor extends EditorWindow<Dictionary> {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void writeDictionaryFile() {
+    private void writeDictionaryFile(){
+        writeDictionaryFile("tmp.dict");
+    }
+            
+    private void writeDictionaryFile(String dictFilePath) {
+        writeDictionaryFile(new File(dictFilePath));
+    }
+    
+    private void writeDictionaryFile(File dictFile) {
         OutputStream serializeOutputStream = null;
         try {
-            serializeOutputStream = new java.io.BufferedOutputStream(new java.io.FileOutputStream("abb.dict"));
+            serializeOutputStream = new java.io.BufferedOutputStream(new java.io.FileOutputStream(dictFile));
             createdObject.serialize(serializeOutputStream);
         } catch (IOException ex) {
             Logger.getLogger(DictionaryEditor.class.getName()).log(Level.SEVERE, null, ex);
@@ -179,9 +187,12 @@ public class DictionaryEditor extends EditorWindow<Dictionary> {
     private void cmdCreateAndCloseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdCreateAndCloseActionPerformed
         final DictionaryEditor tempthis = this;
         new Thread(() -> {
+            int returnval = myFileChooser.showSaveDialog(tempthis);
+            if (returnval == JFileChooser.APPROVE_OPTION) {
             createDictionary();
-            writeDictionaryFile();
+            writeDictionaryFile(myFileChooser.getSelectedFile());
             this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
+            }
         }).start();
     }//GEN-LAST:event_cmdCreateAndCloseActionPerformed
 
