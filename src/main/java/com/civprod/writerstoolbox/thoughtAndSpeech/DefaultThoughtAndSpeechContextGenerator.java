@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import opennlp.tools.dictionary.Dictionary;
 
 /**
  *
@@ -18,12 +19,32 @@ import java.util.Set;
  */
 public class DefaultThoughtAndSpeechContextGenerator implements ThoughtAndSpeechContextGenerator {
     
+    private final Set<String> saidWords;
+    private final Set<String> thoughtWords;
+    
+    public DefaultThoughtAndSpeechContextGenerator(Set<String> saidWords, Set<String> thoughtWords){
+        this.saidWords = saidWords;
+        this.thoughtWords = thoughtWords;
+    }
+    
+    protected String normalizeWord(String token){
+        return token.toLowerCase().trim();
+    }
+    
     protected boolean isSaidWord(String prevToken) {
-        return false;
+        if (saidWords != null){
+            return saidWords.contains(normalizeWord(prevToken));
+        }else {
+            return false;
+        }
     }
 
     protected boolean isThoughtWord(String prevToken) {
-        return false;
+        if (thoughtWords != null) {
+            return thoughtWords.contains(normalizeWord(prevToken));
+        }else {
+            return false;
+        }
     }
     
     protected Set<String> getContextAsList(int index, String[] sequence, String[] priorDecisions, Object[] additionalContext) {

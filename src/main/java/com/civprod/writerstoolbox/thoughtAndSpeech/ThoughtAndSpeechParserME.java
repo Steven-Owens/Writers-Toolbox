@@ -15,6 +15,7 @@ import com.civprod.writerstoolbox.SceneDect.SceneSample;
 import com.civprod.writerstoolbox.data.Paragraph;
 import com.civprod.writerstoolbox.data.Sentence;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +35,10 @@ import opennlp.tools.util.TrainingParameters;
  */
 public class ThoughtAndSpeechParserME implements ThoughtAndSpeechParser {
 
-    public static final String START = "start";
-    public static final String CONTINUE = "cont";
-    public static final String OTHER = "other";
     public static final String PART = "part";
+    public static final String START = "start";
+    public static final String CONTINUE = "continue";
+    public static final String OTHER = "other";
 
     private static final FlatListCollector<String> myFlatListCollector = new FlatListCollector<>();
 
@@ -100,6 +101,37 @@ public class ThoughtAndSpeechParserME implements ThoughtAndSpeechParser {
         }
         return rSpans;
     }
+    
+    //visable to package so Evaluator can see this.
+    Sequence getBestSequence(String[] tokenizedParagraph){
+        return beam.bestSequence(tokenizedParagraph,new Object[tokenizedParagraph.length]);
+    }
+    
+    Sequence getBestSequence(List<String> tokenizedParagraph){
+        return getBestSequence(tokenizedParagraph.toArray(new String[tokenizedParagraph.size()]));
+    }
+    
+    Span[] getEvalSpans(String[] tokenizedParagraph){
+        Sequence curSequence = getBestSequence(tokenizedParagraph);
+        List<Span> evalSpans = new ArrayList<>();
+        List<String> outcomes = curSequence.getOutcomes();
+        int start = -1;
+        String type = ""; 
+        for (int i = 0; i < outcomes.size(); i++) {
+            String curOutcome = outcomes.get(i);
+            if (curOutcome.startsWith(START) && (start < 0)) {
+                start = i;
+                type = curOutcome.replaceAll(START, "").replaceAll(":","").trim();
+            } else if (curOutcome.equals(OTHER) && (start >= 0)) {
+                //i is at least 1 since only one of these blocks can match per loop and the 'curOutcome.startsWith("b-")' condishion must trigger first
+                Span newSpan = new Span(start, i-1,type);
+                evalSpans.add(newSpan);
+                start = -1;
+            }
+        }
+        
+        return evalSpans.toArray(new Span[evalSpans.size()]);
+    }
 
     public Part[] parseParts(Paragraph<?> inParagraph) {
         List<String> tokenizedParagraph = inParagraph.getSentences().parallelStream()
@@ -109,7 +141,7 @@ public class ThoughtAndSpeechParserME implements ThoughtAndSpeechParser {
                 .collect(myFlatListCollector);
         String paragraphContent = inParagraph.getContent();
         List<Part> partedParagraph = PartMapper.map(paragraphContent, tokenizedParagraph);
-        bestSequence = beam.bestSequence(tokenizedParagraph.toArray(new String[tokenizedParagraph.size()]), new Object[partedParagraph.size()]);
+        bestSequence = getBestSequence(tokenizedParagraph);
         List<String> outcomes = bestSequence.getOutcomes();
         List<Part> outThoughtOrSpeech = new java.util.ArrayList<>(1);
         //using to both store the start of the current thought or speech and as a flag that we found a start of a thought of speech. 
@@ -119,9 +151,9 @@ public class ThoughtAndSpeechParserME implements ThoughtAndSpeechParser {
             String curOutcome = outcomes.get(i);
             Part curPart = partedParagraph.get(i);
             Span curSpan = curPart.indexIntoOriginal;
-            if (curOutcome.startsWith("b-")) {
+            if ((curOutcome.startsWith(START) && (start < 0))) {
                 start = curSpan.getStart();
-            } else if (curOutcome.equals("o") && (start >= 0)) {
+            } else if (curOutcome.equals(OTHER) && (start >= 0)) {
                 //i is at least 1 since only one of these blocks can match per loop and the 'curOutcome.startsWith("b-")' condishion must trigger first
                 Span prevSpan = partedParagraph.get(i - 1).indexIntoOriginal;
                 Span newPartSpan = new Span(start, prevSpan.getEnd());

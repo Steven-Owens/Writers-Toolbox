@@ -28,45 +28,57 @@ import opennlp.tools.util.Span;
  *
  * @author Steven Owens
  */
-public class ThoughtAndSpeechSampleStream extends FilterObjectStream<String,ThoughtAndSpeechSample> {
-    
+public class ThoughtAndSpeechSampleStream extends FilterObjectStream<String, ThoughtAndSpeechSample> {
+
     private PipelineStart mPipeline;
-    
-    public static ThoughtAndSpeechSampleStream createDefaultHTMLVersion(ObjectStream<String> sentences){
+
+    public static ThoughtAndSpeechSampleStream createDefaultHTMLVersion(ObjectStream<String> sentences) {
         PipelineStart newPipeline = PipelineStart.createPipeline(new TokenizerProcessingUnit(new RegexStringTokenizer()),
                 new TextTransformerProcessingUnit(HTMLTextTransformer.instance),
                 new FilterProcessingUnit(new RegexTokenFilter(CommonRegexPatterns.XMLTagRegex).negate()),
                 new TokenizerProcessingUnit(new StringTokenizerWrapper(opennlp.tools.tokenize.WhitespaceTokenizer.INSTANCE)));
-        return new ThoughtAndSpeechSampleStream(sentences,newPipeline);
+        return new ThoughtAndSpeechSampleStream(sentences, newPipeline);
     }
-    
-    public ThoughtAndSpeechSampleStream(ObjectStream<String> sentences,PipelineStart inPipeline){
+
+    public ThoughtAndSpeechSampleStream(ObjectStream<String> sentences, PipelineStart inPipeline) {
         super(new EmptyLinePreprocessorStream(sentences));
         mPipeline = inPipeline;
     }
-    
+
     public ThoughtAndSpeechSampleStream(ObjectStream<String> sentences) {
-        this(sentences,PipelineStart.createPipeline(new TokenizerProcessingUnit(new StringTokenizerWrapper(opennlp.tools.tokenize.WhitespaceTokenizer.INSTANCE))));
+        this(sentences, PipelineStart.createPipeline(new TokenizerProcessingUnit(new StringTokenizerWrapper(opennlp.tools.tokenize.WhitespaceTokenizer.INSTANCE))));
     }
 
     @Override
     public ThoughtAndSpeechSample read() throws IOException {
         String paragraph = samples.read();
-        List<String> tokens = org.apache.commons.collections4.ListUtils.unmodifiableList(mPipeline.process(paragraph));
-        List<Span> spans = new ArrayList<>(1);
-        int i = 0;
-        int begin = -1;
-        String type = "";
-        while (i < tokens.size()){
-            String curToken = tokens.get(i);
-            if (curToken.contains("<START:")){
-                begin = i;
-                type = curToken.substring(curToken.indexOf(":")).replaceAll(":", "");
-            } else if ("<END>".equalsIgnoreCase(curToken)){
-                int end = i;
-                spans.add(new Span(begin,end,type));
+        if (paragraph != null) {
+            List<String> tokens = new java.util.ArrayList<>(java.util.Arrays.asList(opennlp.tools.tokenize.WhitespaceTokenizer.INSTANCE.tokenize(paragraph)));
+            List<Span> spans = new ArrayList<>(1);
+            int i = 0;
+            int begin = -1;
+            String type = "";
+            while (i < tokens.size()) {
+                String curToken = tokens.get(i);
+                if (curToken.contains("<START:")) {
+                    begin = i;
+                    type = curToken.substring(curToken.indexOf(":")).replaceAll("[:>]", "");
+                    tokens.remove(curToken);
+                } else if ("<END>".equalsIgnoreCase(curToken)) {
+                    int end = i;
+                    if (begin < 0) {
+                        int debug = 1 + 5;
+                    }
+                    spans.add(new Span(begin, end-1, type));
+                    begin = -1;
+                    tokens.remove(curToken);
+                } else {
+                    i++;
+                }
             }
+            return new ThoughtAndSpeechSample(tokens, spans);
+        } else {
+            return null;
         }
-        return new ThoughtAndSpeechSample(tokens,spans);
     }
 }

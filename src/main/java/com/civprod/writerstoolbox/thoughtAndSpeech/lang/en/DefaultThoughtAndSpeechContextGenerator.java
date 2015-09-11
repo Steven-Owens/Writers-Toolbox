@@ -33,6 +33,10 @@ public class DefaultThoughtAndSpeechContextGenerator extends com.civprod.writers
     public final String SINGLE_QOUTE_STRING_END_LABEL = SINGLE_QOUTE_STRING_LABEL + " end";
     public final String JUST_ENDDED = " just endded";
 
+    public DefaultThoughtAndSpeechContextGenerator(Set<String> saidWords, Set<String> thoughtWords) {
+        super(saidWords, thoughtWords);
+    }
+
     @Override
     public Set<String> getContextAsList(int index, String[] sequence, String[] priorDecisions, Object[] additionalContext) {
         Set<String> labels = super.getContextAsList(index, sequence, priorDecisions, additionalContext);
@@ -90,18 +94,7 @@ public class DefaultThoughtAndSpeechContextGenerator extends com.civprod.writers
             labels.add(ITALICS_TAG_LABEL);
             labels.add("end italics");
         }
-        
         return labels;
-    }
-
-    @Override
-    protected boolean isSaidWord(String prevToken) {
-        return false;
-    }
-
-    @Override
-    protected boolean isThoughtWord(String prevToken) {
-        return false;
     }
 
 }

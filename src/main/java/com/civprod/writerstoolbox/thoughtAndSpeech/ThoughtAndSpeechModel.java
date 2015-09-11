@@ -52,7 +52,7 @@ public class ThoughtAndSpeechModel extends BaseModel {
     super.validateArtifactMap();
 
     if (!(artifactMap.get(THOUGHT_AND_SPEECH_ENTRY_NAME) instanceof MaxentModel)) {
-      throw new InvalidFormatException("Chunker model is incomplete!");
+      throw new InvalidFormatException("THOUGHT AND SPEECH model is incomplete!");
     }
   }
 
