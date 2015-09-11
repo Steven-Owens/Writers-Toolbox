@@ -20,6 +20,10 @@ public class CommonRegexPatterns {
     public static final String XMLTagRegex = "<[^>]+>";
     public static final String EntiyRegEx = "&[\\w0-9]+;";
     public static final String WhiteSpaceRegex = "[\\s\\u00a0]";
+    public static final String doubleNumberRegEx = "^-?\\d+(\\.\\d+)?$";
+    public static final String allWhiteSpaceRegex = "^" +WhiteSpaceRegex + "*$";
+    public static final Pattern allWhiteSpacePattern = Pattern.compile(allWhiteSpaceRegex);
+    public static final Pattern doubleNumberPattern = Pattern.compile(doubleNumberRegEx);
     public static final Pattern PeriodPattern = java.util.regex.Pattern.compile("(?<=[^\\.])\\.(?=("+WhiteSpaceRegex+"*"+XMLTagRegex+")*"+doubleQoute+"?("+WhiteSpaceRegex+"*"+XMLTagRegex+")*$)");
     public static final Pattern XMLTagPattern = java.util.regex.Pattern.compile(XMLTagRegex);
     public static final Pattern EntiyTagPattern = java.util.regex.Pattern.compile(EntiyRegEx);

@@ -5,13 +5,19 @@
  */
 package com.civprod.writerstoolbox.NaturalLanguage.util;
 
-import com.swabunga.spell.event.WordTokenizer;
-import java.util.List;
+import java.util.Map;
 
 /**
  *
  * @author Steven Owens
  */
-public interface StringTokenizer{
-    public List<String> tokenize(String Text);
+public class CustomException extends Exception {
+    public Map<String,Object> data = new java.util.HashMap<>(0);
+    public CustomException(){
+        super();
+    }
+    
+    public CustomException(String message){
+        super(message);
+    }
 }
