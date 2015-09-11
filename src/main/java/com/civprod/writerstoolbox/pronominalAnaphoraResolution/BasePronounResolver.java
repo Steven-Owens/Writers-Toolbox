@@ -5,8 +5,13 @@
  */
 package com.civprod.writerstoolbox.pronominalAnaphoraResolution;
 
+import com.civprod.writerstoolbox.pronominalAnaphoraResolution.entities.Entity;
+import com.civprod.writerstoolbox.pronominalAnaphoraResolution.entities.ParseEntity;
+import com.civprod.writerstoolbox.pronominalAnaphoraResolution.pronounpredicate.PronounPredicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.SortedSet;
 import opennlp.tools.parser.Parse;
 
 /**
@@ -15,8 +20,13 @@ import opennlp.tools.parser.Parse;
  */
 public abstract class BasePronounResolver implements PronounResolver {
     
+    protected final PronounPredicate mPronounPredicate;
     
-    protected final List<Parse> getTokenParses(Parse curParse) {
+    public BasePronounResolver(PronounPredicate inPronounPredicate){
+        mPronounPredicate = inPronounPredicate;
+    }
+    
+    public static List<Parse> getTokenParses(Parse curParse) {
         Parse[] children = curParse.getChildren();
         String type = curParse.getType();
         if ("TK".equalsIgnoreCase(type) || (children.length == 0)){
@@ -27,6 +37,16 @@ public abstract class BasePronounResolver implements PronounResolver {
                 curTokenParses.addAll(getTokenParses(curChildParse));
             }
             return curTokenParses;
+        }
+    }
+    
+    public static void addAllNonPronounNPNodes(Set<Entity> forwardLookingCenters, Parse curRootParse) {
+        if (curRootParse.getLabel().equalsIgnoreCase("NP")){
+            forwardLookingCenters.add(new ParseEntity(curRootParse));
+        }
+        Parse[] children = curRootParse.getChildren();
+        for (Parse curChild : children){
+            addAllNonPronounNPNodes(forwardLookingCenters,curChild);
         }
     }
 }
