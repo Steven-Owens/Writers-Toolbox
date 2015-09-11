@@ -61,6 +61,8 @@ dependencies {
     compile('org.apache.commons:commons-lang3:+:javadoc')
     compile('org.apache.commons:commons-math3:+')
     compile('org.apache.commons:commons-math3:+:javadoc')
+    compile('net.sf.jazzy:jazzy:+')
+    compile('net.sf.jazzy:jazzy:+:javadoc')
     //compile files('./libs/jaws-bin.jar');
     testCompile group: 'junit', name: 'junit', version: '4.10'
 }
