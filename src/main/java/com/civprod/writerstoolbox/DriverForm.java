@@ -17,6 +17,7 @@ import com.civprod.writerstoolbox.OpenNLP.OpenNLPUtils;
 import com.civprod.writerstoolbox.OpenNLP.POSTaggerWrapper;
 import com.civprod.writerstoolbox.OpenNLP.SentenceDetectorWrapper;
 import com.civprod.writerstoolbox.OpenNLP.StringTokenizerWrapper;
+import com.civprod.writerstoolbox.OpenNLP.ThreadSafeParser;
 import com.civprod.writerstoolbox.apps.Context;
 import com.civprod.writerstoolbox.apps.ToolSuite;
 import com.civprod.writerstoolbox.data.*;
@@ -24,9 +25,15 @@ import com.civprod.writerstoolbox.data.component.ChunkerComponent;
 import com.civprod.writerstoolbox.data.component.ChunkerComponentFactory;
 import com.civprod.writerstoolbox.data.component.NamesComponent;
 import com.civprod.writerstoolbox.data.component.NamesComponentFactory;
+import com.civprod.writerstoolbox.data.component.ParseComponent;
+import com.civprod.writerstoolbox.data.component.ParseComponentFactory;
 import com.civprod.writerstoolbox.data.component.PartOfSpeechComponent;
 import com.civprod.writerstoolbox.data.component.PartOfSpeechComponentFactory;
+import com.civprod.writerstoolbox.data.html.HTMLTagStripper;
 import com.civprod.writerstoolbox.data.io.localFS.FileUtils;
+import com.swabunga.spell.engine.SpellDictionary;
+import com.swabunga.spell.engine.SpellDictionaryHashMap;
+import com.swabunga.spell.event.SpellChecker;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -63,6 +70,15 @@ public class DriverForm extends javax.swing.JFrame {
         
         appContext = new Context.Builder().setModifiable(false).build();
         ToolSuite toolSuite = appContext.getToolSuite();
+        
+        try{
+            String dictFile = ".\\data\\jazzy\\english.0\\english.0";
+            SpellDictionary dictionary = new SpellDictionaryHashMap(new File(dictFile));
+            SpellChecker spellCheck  = new SpellChecker(dictionary);
+        } catch (IOException ex) {
+            Logger.getLogger(DriverForm.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         try {
             final SentenceDetector sentenceDetector = new SentenceDetectorWrapper(OpenNLPUtils.createSentenceDetector(OpenNLPUtils.readSentenceModel(OpenNLPUtils.buildModelFileStream("data\\OpenNLP\\en-fiction-sent.bin"))));
             toolSuite.addTool(sentenceDetector);
@@ -79,6 +95,9 @@ public class DriverForm extends javax.swing.JFrame {
         StringTokenizer createTokenizer = new RegexStringTokenizer(defualtApplyOrder, defualtIgnoreMapping);
         toolSuite.addTool(createTokenizer);
         toolSuite.addTool("regex tokenizer",createTokenizer);
+        HTMLTagStripper mTagStripper = new HTMLTagStripper();
+        toolSuite.addTool(mTagStripper);
+        toolSuite.addTool("HTML Tag Stripper",mTagStripper);
         
         try {
             StringTokenizer mStringTokenizer = new StringTokenizerWrapper(
@@ -107,6 +126,7 @@ public class DriverForm extends javax.swing.JFrame {
             toolSuite.addTool("primary part of speech tagger", mPOSTagger);
             PartOfSpeechComponentFactory mPartOfSpeechComponentFactory = new PartOfSpeechComponentFactory(mPOSTagger);
             mPartOfSpeechComponentFactory.setStringTokenizer(createTokenizer);
+            mPartOfSpeechComponentFactory.setTagStripper(mTagStripper);
             toolSuite.addTool(mPartOfSpeechComponentFactory);
         } catch (IOException ex) {
             Logger.getLogger(DriverForm.class.getName()).log(Level.SEVERE, null, ex);
@@ -119,10 +139,24 @@ public class DriverForm extends javax.swing.JFrame {
             ChunkerComponentFactory mChunkerComponentFactory = new ChunkerComponentFactory(mChunker);
             mChunkerComponentFactory.setStringTokenizer(createTokenizer);
             mChunkerComponentFactory.setPartOfSpeechComponentFactory(toolSuite.getTool(PartOfSpeechComponentFactory.class));
+            mChunkerComponentFactory.setTagStripper(mTagStripper);
             toolSuite.addTool(mChunkerComponentFactory);
         } catch (IOException ex) {
             Logger.getLogger(DriverForm.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
+        try {
+           ThreadSafeParser mParser = new ThreadSafeParser(OpenNLPUtils.readParserModel());
+           toolSuite.addTool(mParser);
+           toolSuite.addTool("primary parser",mParser);
+           ParseComponentFactory mParseComponentFactory = new ParseComponentFactory(mParser);
+           mParseComponentFactory.setStringTokenizer(createTokenizer);
+           mParseComponentFactory.setTagStripper(mTagStripper);
+           toolSuite.addTool(mParseComponentFactory);
+        } catch (IOException ex) {
+            Logger.getLogger(DriverForm.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         try {
             TokenNameFinderModel readNameFinderModel = OpenNLPUtils.readNameFinderModel("data\\OpenNLP\\en-ner-person.bin");
             NameFinderME nameFinder = new NameFinderME(readNameFinderModel);
@@ -191,6 +225,7 @@ public class DriverForm extends javax.swing.JFrame {
     private void cmdLoadRawFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdLoadRawFileActionPerformed
         final DriverForm tempthis = this;
         Charset utf8 = Charset.forName("UTF-8");
+        String outFolder = ".\\data\\output\\";
         new Thread(() -> {
             txtOut.setText("");
             int returnval = myFileChooser.showOpenDialog(tempthis);
@@ -213,7 +248,7 @@ public class DriverForm extends javax.swing.JFrame {
                         txtOut.setText(txtOut.getText() + "writing std OpenNLP sentences\n");
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_found_sentences_old.txt"),utf8));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_found_sentences_old.txt"),utf8));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                             for (Sentence curSentence : curParagraph.getSentences(oldSentenceDetector)) {
                                 fout.write(curSentence.getContent());
@@ -248,7 +283,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_found_sentences_java.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_found_sentences_java.txt"))));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                             for (Sentence curSentence : curParagraph.getSentences(javaSentenceDetector)) {
                                 fout.write(curSentence.getContent());
@@ -283,7 +318,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_found_sentences.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_found_sentences.txt"))));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                             for (Sentence curSentence : curParagraph.getSentences(sentenceDetector)) {
                                 fout.write(curSentence.getContent());
@@ -327,7 +362,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_found_tokens.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_found_tokens.txt"))));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                             for (Sentence curSentence : curParagraph.getSentences(sentenceDetector)) {
                                 List<String> whitespaceTokens = java.util.Arrays.asList(opennlp.tools.tokenize.WhitespaceTokenizer.INSTANCE.tokenize(curSentence.getContent()));
@@ -392,7 +427,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_tokenize_file.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_tokenize_file.txt"))));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                             for (Sentence curSentence : curParagraph.getSentences(sentenceDetector)) {
                                 StringBuilder sOut = new StringBuilder();
@@ -428,7 +463,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_tokenize_pargraph_file.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_tokenize_pargraph_file.txt"))));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                            fout.append(curParagraph.getSentences().parallelStream()
                                             .filter((Object curItem) -> curItem instanceof Sentence)
@@ -469,7 +504,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_POS_tags.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_POS_tags.txt"))));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                             for (Sentence curSentence : curParagraph.getSentences(sentenceDetector)) {
                                 StringBuilder sOut = new StringBuilder();
@@ -519,7 +554,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_chunks.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_chunks.txt"))));
                         for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
                             for (Sentence curSentence : curParagraph.getSentences(sentenceDetector)) {
                                 StringBuilder sOut = new StringBuilder();
@@ -555,8 +590,46 @@ public class DriverForm extends javax.swing.JFrame {
                         }
                     }
                     
-                    //ParserTool.parseLine(null, null, returnval)
-                    //NameFinderME nameFinder = appContext.getToolSuite().getTool(NameFinderME.class);
+                    txtOut.setText(txtOut.getText() + "parsing\n");
+                    ParseComponentFactory mParserFactory = appContext.getToolSuite().getTool(ParseComponentFactory.class);
+                    readDocument.getParagraphs().parallelStream()
+                            .forEach((Paragraph<?> curParagraph) -> {
+                                curParagraph.getSentences(sentenceDetector).parallelStream()
+                                        .forEach((Sentence curSentence) -> {
+                                            curSentence.createTokensIfEmpty(createTokenizer);
+                                            curSentence.addComponent(mParserFactory);
+                                        });
+                            });
+                    
+                    try {
+                        txtOut.setText(txtOut.getText() + "writing parse file\n");
+                        fout = new java.io.BufferedWriter(
+                                new java.io.OutputStreamWriter(
+                                        new java.io.BufferedOutputStream(
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_parses.txt"))));
+                        for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
+                            for (Sentence curSentence : curParagraph.getSentences()) {
+                                ParseComponent sentenceParse = curSentence.getComponent(ParseComponent.class);
+                                fout.append(OpenNLPUtils.walkDownParse(sentenceParse.getParse()));
+                                fout.newLine();
+                            }
+                        }
+                        fout.flush();
+                        txtOut.setText(txtOut.getText() + "done parse file\n");
+                    } catch (FileNotFoundException ex) {
+                        Logger.getLogger(DriverForm.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (IOException ex) {
+                        Logger.getLogger(DriverForm.class.getName()).log(Level.SEVERE, null, ex);
+                    } finally {
+                        if (fout != null) {
+                            try {
+                                fout.close();
+                            } catch (IOException ex) {
+                                Logger.getLogger(DriverForm.class.getName()).log(Level.SEVERE, null, ex);
+                            }
+                        }
+                    }
+                    
                     NamesComponentFactory newNamesComponentFactory = appContext.getToolSuite().getTool(NamesComponentFactory.class);
                     java.util.Set<String> names = new java.util.HashSet<>(3);
                     for (Paragraph<?> curParagraph : readDocument.getParagraphs()) {
@@ -575,7 +648,7 @@ public class DriverForm extends javax.swing.JFrame {
                         fout = new java.io.BufferedWriter(
                                 new java.io.OutputStreamWriter(
                                         new java.io.BufferedOutputStream(
-                                                new java.io.FileOutputStream(readDocument.getUploadFileName() + "_found_names.txt"))));
+                                                new java.io.FileOutputStream(outFolder + readDocument.getUploadFileName() + "_found_names.txt"))));
                         for (String curName : names) {
                             fout.write(curName);
                             fout.newLine();
